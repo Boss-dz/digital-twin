@@ -81,7 +81,7 @@
 //                     <p className="max-w-md text-slate-300 font-medium leading-relaxed">
 //                       All sectors actively monitored. AI scouts patrolling.
 //                     </p>
-//                     {/* NEW: Live Scanning Indicator */}
+//                     {/* Live Scanning Indicator */}
 //                     <div className="inline-flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-inner">
 //                       <span className="relative flex h-3 w-3">
 //                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -111,7 +111,7 @@
 //                   </div>
 //                 </div>
 //                 <div
-//                   className={`backdrop-blur-md px-5 py-3 rounded-2xl flex items-center gap-3 border border-white/5 ${sickCount > 0 ? "bg-red-500/20" : "bg-white/10"}`}
+//                   className={`backdrop-blur-md px-5 py-3 rounded-2xl flex items-center gap-3 border border-white/5 ${sickCount > 0 ? "bg-red-500/20 border-red-500/30" : "bg-white/10"}`}
 //                 >
 //                   <AlertTriangle
 //                     className={`w-5 h-5 ${sickCount > 0 ? "text-red-400 animate-pulse" : "text-slate-400"}`}
@@ -165,11 +165,12 @@
 //         </div>
 //       </div>
 
-//       {/* NEW: Side-by-Side Layout for Upload and Alerts */}
-//       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+//       {/* Side-by-Side Layout for Upload and Alerts */}
+//       {/* We use a fixed height on large screens so they NEVER shrink or mismatch */}
+//       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch lg:h-[400px]">
 //         {/* Left Column: Drag and Drop Widget */}
 //         <div
-//           className={`relative rounded-[2.5rem] p-1 overflow-hidden transition-all duration-300 h-full min-h-[350px] flex ${isDragging ? "bg-green-500 scale-[1.02] shadow-xl" : "bg-gradient-to-r from-slate-200 to-slate-100 shadow-sm"}`}
+//           className={`relative rounded-[2.5rem] p-1 overflow-hidden transition-all duration-300 flex flex-col h-full ${isDragging ? "bg-green-500 scale-[1.02] shadow-xl" : "bg-gradient-to-r from-slate-200 to-slate-100 shadow-sm"}`}
 //           onDragEnter={handleDrag}
 //           onDragLeave={handleDrag}
 //           onDragOver={handleDrag}
@@ -203,20 +204,24 @@
 //           </div>
 //         </div>
 
-//         {/* Right Column: Alerts Queue */}
-//         <div className="flex flex-col h-full">
-//           <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-3">
-//             Action Required
+//         {/* Right Column: PERMANENT Alerts Queue Box */}
+//         <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-sm flex flex-col p-8 h-full">
+//           {/* Header Area stays fixed */}
+//           <div className="flex justify-between items-center mb-6">
+//             <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+//               Action Required
+//             </h3>
 //             {alerts.length > 0 && (
 //               <span className="bg-red-500 text-white px-3 py-1 rounded-full text-[10px] uppercase tracking-widest animate-pulse">
 //                 Live
 //               </span>
 //             )}
-//           </h3>
+//           </div>
 
-//           <div className="flex-1">
+//           {/* Content Area uses absolute positioning so it never stretches the parent box */}
+//           <div className="flex-1 relative">
 //             {alerts.length === 0 ? (
-//               <div className="bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white text-center shadow-sm h-full flex flex-col items-center justify-center min-h-[350px]">
+//               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
 //                 <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4 opacity-30" />
 //                 <h4 className="text-xl font-black text-slate-700">
 //                   No Active Threats
@@ -226,36 +231,38 @@
 //                 </p>
 //               </div>
 //             ) : (
-//               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full content-start overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
-//                 {alerts.map((alert) => (
-//                   <div
-//                     key={alert.id}
-//                     onClick={() => onAlertClick(alert.plantIndex)}
-//                     className="bg-white/80 backdrop-blur-xl p-5 rounded-[2rem] border border-white shadow-lg shadow-slate-200/40 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden flex flex-col justify-between"
-//                   >
-//                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-400" />
-//                     <div>
-//                       <div className="flex justify-between items-start mb-3">
-//                         <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
-//                           <AlertTriangle className="w-5 h-5" />
+//               <div className="absolute inset-0 overflow-y-auto pr-2 custom-scrollbar pb-4">
+//                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                   {alerts.map((alert) => (
+//                     <div
+//                       key={alert.id}
+//                       onClick={() => onAlertClick(alert.plantIndex)}
+//                       className="bg-white/90 backdrop-blur-xl p-5 rounded-[2rem] border border-red-100/50 shadow-lg shadow-red-100/20 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden flex flex-col justify-between min-h-[160px]"
+//                     >
+//                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-400" />
+//                       <div>
+//                         <div className="flex justify-between items-start mb-3">
+//                           <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
+//                             <AlertTriangle className="w-5 h-5" />
+//                           </div>
+//                           <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded-full text-slate-500">
+//                             {alert.time}
+//                           </span>
 //                         </div>
-//                         <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded-full text-slate-500">
-//                           {alert.time}
-//                         </span>
+//                         <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">
+//                           {alert.title}
+//                         </h4>
+//                         <p className="text-xs font-bold text-slate-500 truncate">
+//                           {alert.node}
+//                         </p>
 //                       </div>
-//                       <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">
-//                         {alert.title}
-//                       </h4>
-//                       <p className="text-xs font-bold text-slate-500 truncate">
-//                         {alert.node}
-//                       </p>
+//                       <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] font-black text-slate-400 flex items-center justify-between group-hover:text-slate-900 transition-colors">
+//                         <span>FLY TO NODE</span>
+//                         <ScanSearch className="w-3 h-3 group-hover:animate-ping" />
+//                       </div>
 //                     </div>
-//                     <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] font-black text-slate-400 flex items-center justify-between group-hover:text-slate-900 transition-colors">
-//                       <span>FLY TO NODE</span>
-//                       <ScanSearch className="w-3 h-3 group-hover:animate-ping" />
-//                     </div>
-//                   </div>
-//                 ))}
+//                   ))}
+//                 </div>
 //               </div>
 //             )}
 //           </div>
@@ -285,6 +292,7 @@
 //     </div>
 //   );
 // }
+
 import {
   Thermometer,
   Droplets,
@@ -296,6 +304,8 @@ import {
   Upload,
   Leaf,
   Activity,
+  Play,
+  Square,
 } from "lucide-react";
 import { useState, useCallback } from "react";
 
@@ -306,12 +316,16 @@ export default function HomeDashboard({
   onManualUpload,
   totalPlants,
   sickCount,
+  // NEW PROPS
+  isPanelOpen,
+  isScouting,
+  onToggleScouting,
 }) {
   const healthPercentage =
     Math.round(((totalPlants - sickCount) / totalPlants) * 100) || 100;
   const [isDragging, setIsDragging] = useState(false);
 
-  // --- Drag and Drop Handlers ---
+  // --- Drag and Drop Handlers (No changes) ---
   const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -321,7 +335,6 @@ export default function HomeDashboard({
       setIsDragging(false);
     }
   }, []);
-
   const handleDrop = useCallback(
     (e) => {
       e.preventDefault();
@@ -333,7 +346,6 @@ export default function HomeDashboard({
     },
     [onManualUpload],
   );
-
   const handleFileSelect = (e) => {
     if (e.target.files && e.target.files[0]) {
       onManualUpload(e.target.files[0]);
@@ -361,33 +373,39 @@ export default function HomeDashboard({
                 </span>
               </div>
             </div>
-            <div className="mt-8 flex justify-between items-end">
+            <div className="mt-8 flex justify-between items-end gap-4">
               <div>
-                {sickCount === 0 ? (
-                  <div className="space-y-4">
-                    <p className="max-w-md text-slate-300 font-medium leading-relaxed">
-                      All sectors actively monitored. AI scouts patrolling.
-                    </p>
-                    {/* Live Scanning Indicator */}
-                    <div className="inline-flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-inner">
-                      <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                      </span>
-                      <span className="text-xs text-green-400 font-black uppercase tracking-widest animate-pulse flex items-center gap-2">
-                        <Activity className="w-3 h-3" /> Analyzing Live Feed...
-                      </span>
+                <p className="max-w-md text-slate-300 font-medium leading-relaxed mb-6">
+                  {sickCount === 0
+                    ? "AI scouts ready. Start sequence to begin monitoring."
+                    : `${sickCount} anomalies detected. Review alerts queue immediately.`}
+                </p>
+
+                {/* NEW: Goal 3 - Manual Start/Stop Buttons */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={onToggleScouting}
+                    className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all ${isScouting ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30" : "bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/30"}`}
+                  >
+                    {isScouting ? (
+                      <>
+                        <Square className="w-4 h-4" /> Stop Scout
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4" /> Start Scout
+                      </>
+                    )}
+                  </button>
+                  {isScouting && (
+                    <div className="text-xs text-green-400 font-bold uppercase tracking-widest animate-pulse flex items-center gap-2">
+                      <Activity className="w-4 h-4" /> Running...
                     </div>
-                  </div>
-                ) : (
-                  <p className="max-w-md text-slate-300 font-medium leading-relaxed mb-6">
-                    {sickCount} anomalies detected. Review alerts queue
-                    immediately.
-                  </p>
-                )}
+                  )}
+                </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex gap-4 hidden md:flex">
                 <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl flex items-center gap-3 border border-white/5">
                   <CheckCircle2 className="w-5 h-5 text-green-400" />
                   <div>
@@ -415,7 +433,7 @@ export default function HomeDashboard({
           </div>
         </div>
 
-        {/* Live Weather/Conditions */}
+        {/* Weather Widgets (No changes) */}
         <div className="grid grid-cols-2 gap-4">
           <AliveWidget
             icon={Thermometer}
@@ -452,10 +470,9 @@ export default function HomeDashboard({
         </div>
       </div>
 
-      {/* Side-by-Side Layout for Upload and Alerts */}
-      {/* We use a fixed height on large screens so they NEVER shrink or mismatch */}
+      {/* Side-by-Side Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch lg:h-[400px]">
-        {/* Left Column: Drag and Drop Widget */}
+        {/* Left Column: Drag and Drop Widget (No changes) */}
         <div
           className={`relative rounded-[2.5rem] p-1 overflow-hidden transition-all duration-300 flex flex-col h-full ${isDragging ? "bg-green-500 scale-[1.02] shadow-xl" : "bg-gradient-to-r from-slate-200 to-slate-100 shadow-sm"}`}
           onDragEnter={handleDrag}
@@ -470,7 +487,6 @@ export default function HomeDashboard({
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
               onChange={handleFileSelect}
             />
-
             <div
               className={`w-20 h-20 mb-6 rounded-3xl flex items-center justify-center transition-all duration-300 ${isDragging ? "bg-green-100 text-green-600 scale-110" : "bg-slate-100 text-slate-400 group-hover:bg-green-50 group-hover:text-green-500 group-hover:scale-105"}`}
             >
@@ -480,7 +496,6 @@ export default function HomeDashboard({
                 <Upload className="w-10 h-10" />
               )}
             </div>
-
             <h3 className="text-2xl font-black text-slate-900 mb-2">
               {isDragging ? "Drop to Analyze" : "Manual Disease Check"}
             </h3>
@@ -491,68 +506,81 @@ export default function HomeDashboard({
           </div>
         </div>
 
-        {/* Right Column: PERMANENT Alerts Queue Box */}
-        <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-sm flex flex-col p-8 h-full">
-          {/* Header Area stays fixed */}
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-              Action Required
-            </h3>
-            {alerts.length > 0 && (
-              <span className="bg-red-500 text-white px-3 py-1 rounded-full text-[10px] uppercase tracking-widest animate-pulse">
-                Live
-              </span>
-            )}
-          </div>
+        {/* Right Column: Alerts Queue with CONDITIONAL HIDING */}
+        <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-sm flex flex-col p-8 h-full relative overflow-hidden">
+          {/* GOAL 1 IMPLEMENTATION: If panel is open, show placeholder instead of alerts */}
+          {isPanelOpen ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center bg-slate-50/80 backdrop-blur-sm z-20">
+              <Activity className="w-16 h-16 text-blue-500 mx-auto mb-4 animate-pulse" />
+              <h4 className="text-xl font-black text-slate-700">
+                Diagnostic Panel Active
+              </h4>
+              <p className="text-slate-500 font-medium mt-1 max-w-xs">
+                Close the diagnosis side panel to view the alerts queue.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                  Action Required
+                </h3>
+                {alerts.length > 0 && (
+                  <span className="bg-red-500 text-white px-3 py-1 rounded-full text-[10px] uppercase tracking-widest animate-pulse">
+                    Live
+                  </span>
+                )}
+              </div>
 
-          {/* Content Area uses absolute positioning so it never stretches the parent box */}
-          <div className="flex-1 relative">
-            {alerts.length === 0 ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4 opacity-30" />
-                <h4 className="text-xl font-black text-slate-700">
-                  No Active Threats
-                </h4>
-                <p className="text-slate-500 font-medium mt-1">
-                  AI models are analyzing the feed.
-                </p>
-              </div>
-            ) : (
-              <div className="absolute inset-0 overflow-y-auto pr-2 custom-scrollbar pb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {alerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      onClick={() => onAlertClick(alert.plantIndex)}
-                      className="bg-white/90 backdrop-blur-xl p-5 rounded-[2rem] border border-red-100/50 shadow-lg shadow-red-100/20 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden flex flex-col justify-between min-h-[160px]"
-                    >
-                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-400" />
-                      <div>
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
-                            <AlertTriangle className="w-5 h-5" />
+              <div className="flex-1 relative">
+                {alerts.length === 0 ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4 opacity-30" />
+                    <h4 className="text-xl font-black text-slate-700">
+                      No Active Threats
+                    </h4>
+                    <p className="text-slate-500 font-medium mt-1">
+                      Start the AI scout to begin monitoring.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 overflow-y-auto pr-2 custom-scrollbar pb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {alerts.map((alert) => (
+                        <div
+                          key={alert.id}
+                          onClick={() => onAlertClick(alert.plantIndex)}
+                          className="bg-white/90 backdrop-blur-xl p-5 rounded-[2rem] border border-red-100/50 shadow-lg shadow-red-100/20 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden flex flex-col justify-between min-h-[160px]"
+                        >
+                          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-400" />
+                          <div>
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="bg-red-50 p-2.5 rounded-2xl text-red-600 group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
+                                <AlertTriangle className="w-5 h-5" />
+                              </div>
+                              <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded-full text-slate-500">
+                                {alert.time}
+                              </span>
+                            </div>
+                            <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">
+                              {alert.title}
+                            </h4>
+                            <p className="text-xs font-bold text-slate-500 truncate">
+                              {alert.node}
+                            </p>
                           </div>
-                          <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded-full text-slate-500">
-                            {alert.time}
-                          </span>
+                          <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] font-black text-slate-400 flex items-center justify-between group-hover:text-slate-900 transition-colors">
+                            <span>FLY TO NODE</span>
+                            <ScanSearch className="w-3 h-3 group-hover:animate-ping" />
+                          </div>
                         </div>
-                        <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">
-                          {alert.title}
-                        </h4>
-                        <p className="text-xs font-bold text-slate-500 truncate">
-                          {alert.node}
-                        </p>
-                      </div>
-                      <div className="mt-4 pt-3 border-t border-slate-100 text-[10px] font-black text-slate-400 flex items-center justify-between group-hover:text-slate-900 transition-colors">
-                        <span>FLY TO NODE</span>
-                        <ScanSearch className="w-3 h-3 group-hover:animate-ping" />
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -560,7 +588,7 @@ export default function HomeDashboard({
 }
 
 function AliveWidget({ icon: Icon, label, value, bg, color, delay }) {
-  return (
+  /* No changes here */ return (
     <div
       className={`${bg} rounded-[2rem] p-6 shadow-sm border border-white/50 relative overflow-hidden flex flex-col justify-between hover:scale-[1.03] transition-transform duration-300 animate-in zoom-in-95`}
       style={{ animationDelay: delay, animationFillMode: "both" }}
