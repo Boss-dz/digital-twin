@@ -12,7 +12,6 @@
 // import { useState, useEffect } from "react";
 // import { Client } from "@gradio/client";
 
-// // ... (Keep TREATMENT_DATABASE exactly the same) ...
 // const TREATMENT_DATABASE = {
 //   healthy:
 //     "Plant is in optimal condition. Maintain standard watering, nutrition, and monitoring routines.",
@@ -33,17 +32,24 @@
 //   const [result, setResult] = useState(null);
 //   const [xaiImage, setXaiImage] = useState(null);
 
-//   // NEW: Updated initialization logic
+//   // FIX: Updated initialization logic to safely handle empty manual states
 //   useEffect(() => {
 //     if (isOpen && plantInfo) {
-//       if (plantInfo.manualFile) {
-//         // CASE 1: Manual upload from Home Screen (It's already a File object)
+//       // Safely check if manualFile is a real File object (from drag-and-drop)
+//       if (plantInfo.manualFile && plantInfo.manualFile instanceof File) {
 //         setFile(plantInfo.manualFile);
 //         setPreview(URL.createObjectURL(plantInfo.manualFile));
 //         runDeepAnalysis(plantInfo.manualFile);
 //       } else if (plantInfo.autoImage) {
-//         // CASE 2: Automated camera click (It's a URL string, need to fetch it)
+//         // It's a sick plant from the 3D model, load the automated camera image
 //         loadAndAnalyzeAutoImage(plantInfo.autoImage);
+//       } else {
+//         // FIX: It's an empty manual state (User clicked a healthy plant in 3D)
+//         // Reset everything to an empty state so they can upload manually
+//         setFile(null);
+//         setPreview(null);
+//         setResult(null);
+//         setXaiImage(null);
 //       }
 //     } else if (!isOpen) {
 //       // Reset when closed
@@ -54,7 +60,6 @@
 //     }
 //   }, [isOpen, plantInfo]);
 
-//   // Helper function to fetch the local camera image URL and turn it into a File
 //   const loadAndAnalyzeAutoImage = async (imageUrl) => {
 //     try {
 //       const response = await fetch(imageUrl);
@@ -63,8 +68,6 @@
 
 //       setFile(autoFile);
 //       setPreview(URL.createObjectURL(autoFile));
-
-//       // Immediately run the AI analysis
 //       runDeepAnalysis(autoFile);
 //     } catch (error) {
 //       console.error("Failed to auto-load image:", error);
@@ -81,11 +84,10 @@
 //     }
 //   };
 
-//   // The main AI logic (kept the same)
 //   const runDeepAnalysis = async (targetFile) => {
 //     if (!targetFile) return;
 //     setLoading(true);
-//     setResult(null); // Clear previous results while loading
+//     setResult(null);
 //     setXaiImage(null);
 
 //     try {
@@ -185,7 +187,7 @@
 //         </div>
 
 //         {/* Dynamic Banner based on source */}
-//         {plantInfo?.autoImage && (
+//         {plantInfo?.autoImage ? (
 //           <div className="bg-red-50 p-6 mb-8 rounded-[1.5rem] border border-red-100 flex items-start gap-4">
 //             <div className="p-3 bg-red-100 rounded-2xl text-red-600">
 //               <AlertTriangle className="w-6 h-6" />
@@ -199,18 +201,19 @@
 //               </p>
 //             </div>
 //           </div>
-//         )}
-//         {plantInfo?.manualFile && (
+//         ) : (
 //           <div className="bg-blue-50 p-6 mb-8 rounded-[1.5rem] border border-blue-100 flex items-start gap-4">
 //             <div className="p-3 bg-blue-100 rounded-2xl text-blue-600">
 //               <FileUp className="w-6 h-6" />
 //             </div>
 //             <div>
 //               <p className="text-lg font-black text-blue-700 leading-none">
-//                 Manual Upload
+//                 Manual Inspection
 //               </p>
 //               <p className="text-sm text-blue-600/80 mt-2 font-bold leading-relaxed">
-//                 Analysing user-submitted image...
+//                 {plantInfo?.manualFile
+//                   ? "Analyzing user-submitted image..."
+//                   : "Upload an image of this specific node to run a manual AI health check."}
 //               </p>
 //             </div>
 //           </div>
@@ -383,7 +386,8 @@ import {
   FileUp,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Client } from "@gradio/client";
+
+const BACKEND_URL = "http://localhost:8000";
 
 const TREATMENT_DATABASE = {
   healthy:
@@ -405,27 +409,21 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
   const [result, setResult] = useState(null);
   const [xaiImage, setXaiImage] = useState(null);
 
-  // FIX: Updated initialization logic to safely handle empty manual states
   useEffect(() => {
     if (isOpen && plantInfo) {
-      // Safely check if manualFile is a real File object (from drag-and-drop)
       if (plantInfo.manualFile && plantInfo.manualFile instanceof File) {
         setFile(plantInfo.manualFile);
         setPreview(URL.createObjectURL(plantInfo.manualFile));
         runDeepAnalysis(plantInfo.manualFile);
       } else if (plantInfo.autoImage) {
-        // It's a sick plant from the 3D model, load the automated camera image
         loadAndAnalyzeAutoImage(plantInfo.autoImage);
       } else {
-        // FIX: It's an empty manual state (User clicked a healthy plant in 3D)
-        // Reset everything to an empty state so they can upload manually
         setFile(null);
         setPreview(null);
         setResult(null);
         setXaiImage(null);
       }
     } else if (!isOpen) {
-      // Reset when closed
       setFile(null);
       setPreview(null);
       setResult(null);
@@ -438,7 +436,6 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const autoFile = new File([blob], "scout_auto.jpg", { type: blob.type });
-
       setFile(autoFile);
       setPreview(URL.createObjectURL(autoFile));
       runDeepAnalysis(autoFile);
@@ -464,30 +461,19 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
     setXaiImage(null);
 
     try {
-      const client = await Client.connect(
-        "Seroy/Efficientnet_lite0_All_Diseases",
-      );
-      const aiResponse = await client.predict("/predict", {
-        image: targetFile,
+      const formData = new FormData();
+      formData.append("image", targetFile);
+
+      const response = await fetch(`${BACKEND_URL}/predict`, {
+        method: "POST",
+        body: formData,
       });
 
-      const out0 = aiResponse.data[0];
-      const out1 = aiResponse.data[1];
-      let prediction = null;
-      let heatmapData = null;
+      if (!response.ok) throw new Error(`Backend error: ${response.status}`);
 
-      if (out0 && out0.confidences) {
-        prediction = out0;
-        heatmapData = out1;
-      } else if (out1 && out1.confidences) {
-        prediction = out1;
-        heatmapData = out0;
-      }
+      const data = await response.json();
 
-      if (!prediction)
-        throw new Error("Could not find label data in API response.");
-
-      const allConfidences = prediction.confidences || [];
+      const allConfidences = data.confidences || [];
       let detected = allConfidences.filter((c) => c.confidence >= 0.3);
       if (detected.length === 0 && allConfidences.length > 0) {
         detected = [allConfidences[0]];
@@ -509,18 +495,17 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
 
       setResult({ details: detailedResults });
 
-      if (heatmapData) {
-        const imageUrl = heatmapData.url || heatmapData.path || heatmapData;
-        setXaiImage(imageUrl);
+      if (data.heatmap_id) {
+        setXaiImage(`${BACKEND_URL}/heatmap/${data.heatmap_id}`);
       }
     } catch (error) {
-      console.error("AI Prediction Error:", error);
+      console.error("Backend Prediction Error:", error);
       setResult({
         details: [
           {
-            name: "API Connection Error",
+            name: "Connection Error",
             confidence: "0",
-            advice: "Failed to communicate with the Hugging Face AI model.",
+            advice: `Failed to reach the backend at ${BACKEND_URL}. Make sure it is running.`,
           },
         ],
       });
@@ -532,12 +517,16 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
   return (
     <>
       <div
-        className={`fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[90] transition-opacity duration-500 ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        className={`fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[90] transition-opacity duration-500 ${
+          isOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
         onClick={onClose}
       />
 
       <div
-        className={`fixed right-0 top-0 h-full w-[500px] bg-white/90 backdrop-blur-2xl border-l border-white/50 shadow-2xl p-8 transition-transform duration-500 cubic-bezier(0.32, 0.72, 0, 1) z-[100] overflow-y-auto
+        className={`fixed right-0 top-0 h-full w-[500px] bg-white/90 backdrop-blur-2xl border-l border-white/50 shadow-2xl p-8 transition-transform duration-500 z-[100] overflow-y-auto
           ${isOpen ? "translate-x-0" : "translate-x-full"}`}
       >
         <div className="flex justify-between items-start mb-10">
@@ -559,7 +548,6 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
           </button>
         </div>
 
-        {/* Dynamic Banner based on source */}
         {plantInfo?.autoImage ? (
           <div className="bg-red-50 p-6 mb-8 rounded-[1.5rem] border border-red-100 flex items-start gap-4">
             <div className="p-3 bg-red-100 rounded-2xl text-red-600">
@@ -594,7 +582,11 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
 
         <div className="space-y-6">
           <div
-            className={`border-4 border-dashed rounded-[2rem] p-4 text-center transition-all relative group ${preview ? "border-green-500/50 bg-green-50/30" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
+            className={`border-4 border-dashed rounded-[2rem] p-4 text-center transition-all relative group ${
+              preview
+                ? "border-green-500/50 bg-green-50/30"
+                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+            }`}
           >
             <input
               type="file"

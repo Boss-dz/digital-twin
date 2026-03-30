@@ -1,257 +1,3 @@
-// "use client";
-// import { useState, useEffect, useRef } from "react";
-// import Navbar from "@/components/Navbar";
-// import DigitalTwin from "@/components/DigitalTwin";
-// import DiagnosisPanel from "@/components/DiagnosisPanel";
-// import HomeDashboard from "@/components/HomeDashboard";
-// import AnalyticsDashboard from "@/components/AnalyticsDashboard";
-// import { Client } from "@gradio/client";
-
-// export default function Home() {
-//   const [currentView, setCurrentView] = useState("home");
-//   const [selectedPlantInfo, setSelectedPlantInfo] = useState(null);
-//   const [weather, setWeather] = useState({ temp: "--", humid: "--" });
-
-//   const [alerts, setAlerts] = useState([]);
-//   const [sickPlants, setSickPlants] = useState([]);
-//   const [focusPlant, setFocusPlant] = useState(null);
-
-//   // NEW: State for manual Start/Stop
-//   const [isScouting, setIsScouting] = useState(false);
-//   // NEW: Ref to control the async loop interruption instantly
-//   const scoutingRef = useRef(isScouting);
-//   // NEW: Ref to remember where we left off if paused
-//   const currentIndexRef = useRef(0);
-
-//   // 1. Localized Weather Fetch
-//   useEffect(() => {
-//     fetch(
-//       `https://api.open-meteo.com/v1/forecast?latitude=36.62&longitude=3.22&current=temperature_2m,relative_humidity_2m`,
-//     )
-//       .then((res) => res.json())
-//       .then((data) => {
-//         if (data.current) {
-//           setWeather({
-//             temp: Math.round(data.current.temperature_2m) + "°C",
-//             humid: data.current.relative_humidity_2m + "%",
-//           });
-//         }
-//       })
-//       .catch((err) => console.error("Weather fetch failed", err));
-//   }, []);
-
-//   // NEW: Toggle function for the Start/Stop buttons
-//   const toggleScouting = () => {
-//     const newState = !isScouting;
-//     setIsScouting(newState);
-//     scoutingRef.current = newState; // Update ref immediately for the loop
-//   };
-
-//   // 2. Automated Scout AI Loop (UPDATED for Manual Start/Stop)
-//   useEffect(() => {
-//     // If not scouting, don't run anything
-//     if (!isScouting) return;
-
-//     const specificImages = [
-//       "p.jpg",
-//       "rust.jpg",
-//       "rust3.jpg",
-//       "sc.jpg",
-//       "2.jpg",
-//       "3d.jpg",
-//       "complex.jpg",
-//       "f2.jpg",
-//     ];
-
-//     const cameraScoutData = Array.from({ length: 72 }).map((_, index) => {
-//       let fileName =
-//         index < 64
-//           ? `/scout_cameras/healthy${index + 1}.jpg`
-//           : `/scout_cameras/${specificImages[index - 64]}`;
-//       const sectorLetter = String.fromCharCode(65 + Math.floor(index / 10));
-//       const rowNum = (index % 10) + 1;
-//       return {
-//         file: fileName,
-//         nodeName: `Sector ${sectorLetter} - Row ${rowNum}`,
-//         plantIndex: index,
-//       };
-//     });
-
-//     const runScout = async () => {
-//       console.log("🚀 AI Scout Initiated.");
-//       // Start from where we left off last time
-//       for (let i = currentIndexRef.current; i < cameraScoutData.length; i++) {
-//         // CRITICAL CHECK: Stop immediately if the user clicked "Stop"
-//         if (!scoutingRef.current) {
-//           console.log("⏸️ AI Scout Paused.");
-//           break;
-//         }
-
-//         currentIndexRef.current = i; // Update progress
-//         const currentCamera = cameraScoutData[i];
-//         console.log(
-//           `📷 Checking Image ${i + 1}/72: ${currentCamera.nodeName}...`,
-//         );
-
-//         try {
-//           const response = await fetch(currentCamera.file);
-//           const blob = await response.blob();
-//           const file = new File([blob], "scout_capture.jpg", {
-//             type: blob.type,
-//           });
-//           const client = await Client.connect(
-//             "Seroy/Efficientnet_lite0_HealthyVsUnhealthy",
-//           );
-//           const aiResponse = await client.predict("/predict", { image: file });
-//           const prediction = aiResponse.data[0];
-//           const rawOutput =
-//             typeof prediction === "string"
-//               ? prediction
-//               : prediction?.label || "";
-
-//           if (rawOutput.toLowerCase().includes("unhealthy")) {
-//             const newAlert = {
-//               id: Date.now(),
-//               title: `Pathogen Detected`,
-//               time: new Date().toLocaleTimeString([], {
-//                 hour: "2-digit",
-//                 minute: "2-digit",
-//               }),
-//               node: currentCamera.nodeName,
-//               plantIndex: currentCamera.plantIndex,
-//             };
-//             setAlerts((prev) => [newAlert, ...prev].slice(0, 5));
-//             setSickPlants((prev) => {
-//               if (!prev.find((p) => p.plantIndex === currentCamera.plantIndex))
-//                 return [...prev, currentCamera];
-//               return prev;
-//             });
-//           }
-//         } catch (error) {
-//           console.error(`Scout AI Error on ${currentCamera.nodeName}:`, error);
-//         }
-
-//         // Small pause between checks to keep UI responsive
-//         await new Promise((resolve) => setTimeout(resolve, 800));
-//       }
-
-//       if (
-//         currentIndexRef.current >= cameraScoutData.length - 1 &&
-//         scoutingRef.current
-//       ) {
-//         console.log("✅ Automated Scout: Cycle Complete.");
-//         setIsScouting(false); // Stop automatically at the end
-//         scoutingRef.current = false;
-//         currentIndexRef.current = 0; // Reset for next time
-//       }
-//     };
-
-//     runScout();
-
-//     // Cleanup: Ensure loop stops if component unmounts
-//     return () => {
-//       scoutingRef.current = false;
-//     };
-//   }, [isScouting]); // Only re-run effect when isScouting changes
-
-//   // --- INTERACTION HANDLERS ---
-
-//   // UPDATED: Goal 2 - Re-enable clicking on healthy plants
-//   const handlePlantClick = (clickedIndex) => {
-//     if (clickedIndex === undefined) return;
-
-//     // 1. Check if it's a known sick plant
-//     const sickData = sickPlants.find((p) => p.plantIndex === clickedIndex);
-
-//     if (sickData) {
-//       // It's sick, open panel with the auto-image
-//       setSelectedPlantInfo({ id: sickData.nodeName, autoImage: sickData.file });
-//     } else {
-//       // FIX: It's healthy, open panel in "empty" manual upload mode
-//       // We pass null for the file so the panel doesn't try to render an image yet
-//       setSelectedPlantInfo({
-//         id: `Healthy Node ID: ${clickedIndex}`,
-//         manualFile: null,
-//       });
-//     }
-//   };
-
-//   const handleAlertClick = (plantIndex) => {
-//     setCurrentView("3dmodel");
-//     setFocusPlant(plantIndex);
-//     setSelectedPlantInfo(null);
-//   };
-
-//   const handleManualUpload = (file) => {
-//     setSelectedPlantInfo({ id: "Manual Quick-Check", manualFile: file });
-//   };
-
-//   // --- RENDER ROUTER ---
-//   const isPanelOpen = !!selectedPlantInfo; // Goal 1 helper
-
-//   return (
-//     <main className="h-screen w-full bg-[#F8FAFC] text-slate-900 flex flex-col font-sans overflow-hidden relative">
-//       <Navbar
-//         setView={setCurrentView}
-//         currentView={currentView}
-//         alerts={alerts}
-//       />
-
-//       <div className="flex-1 overflow-y-auto p-8 relative">
-//         {currentView === "home" && (
-//           <HomeDashboard
-//             weather={weather}
-//             alerts={alerts}
-//             onAlertClick={handleAlertClick}
-//             onManualUpload={handleManualUpload}
-//             totalPlants={72}
-//             sickCount={sickPlants.length}
-//             // NEW PROPS PASSED DOWN
-//             isPanelOpen={isPanelOpen}
-//             isScouting={isScouting}
-//             onToggleScouting={toggleScouting}
-//           />
-//         )}
-
-//         {currentView === "3dmodel" && (
-//           <div className="w-full h-full rounded-[2.5rem] overflow-hidden shadow-2xl border border-white relative bg-gradient-to-b from-slate-900 to-slate-800 animate-in zoom-in-95 duration-500">
-//             {/* Updated banner based on scouting state */}
-//             <div
-//               className={`absolute top-8 left-8 z-10 px-5 py-2.5 rounded-full backdrop-blur-xl text-xs font-black tracking-widest uppercase flex items-center gap-3 border ${isScouting ? "bg-black/40 text-white border-white/10" : "bg-yellow-500/80 text-slate-900 border-yellow-300"}`}
-//             >
-//               <span className="relative flex h-2 w-2">
-//                 <span
-//                   className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isScouting ? "bg-green-400" : "bg-yellow-400"}`}
-//                 ></span>
-//                 <span
-//                   className={`relative inline-flex rounded-full h-2 w-2 ${isScouting ? "bg-green-500" : "bg-yellow-600"}`}
-//                 ></span>
-//               </span>
-//               {isScouting
-//                 ? "Digital Twin Sync: LIVE"
-//                 : "Digital Twin Sync: PAUSED"}
-//             </div>
-//             <DigitalTwin
-//               onPlantClick={handlePlantClick}
-//               sickPlants={sickPlants}
-//               focusPlant={focusPlant}
-//               isPanelOpen={isPanelOpen}
-//             />
-//           </div>
-//         )}
-
-//         {currentView === "analytics" && <AnalyticsDashboard />}
-//       </div>
-
-//       <DiagnosisPanel
-//         isOpen={isPanelOpen}
-//         plantInfo={selectedPlantInfo}
-//         onClose={() => setSelectedPlantInfo(null)}
-//       />
-//     </main>
-//   );
-// }
-
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
@@ -297,74 +43,47 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // if (!isScouting) return;
+    if (!isScouting) return;
 
-    // const specificImages = [
-    //   "p.jpg",
-    //   "rust.jpg",
-    //   "rust3.jpg",
-    //   "sc.jpg",
-    //   "2.jpg",
-    //   "3d.jpg",
-    //   "complex.jpg",
-    //   "f2.jpg",
-    // ];
+    const specificImages = [
+      "p.jpg",
+      "rust.jpg",
+      "rust3.jpg",
+      "sc.jpg",
+      "2.jpg",
+      "3d.jpg",
+      "complex.jpg",
+      "f2.jpg",
+    ];
 
-    // const cameraScoutData = Array.from({ length: 72 }).map((_, index) => {
-    //   // CHECK SICK LEAVES FIRST!
-    //   let fileName =
-    //     index < 8
-    //       ? `/scout_cameras/${specificImages[index]}`
-    //       : `/scout_cameras/healthy${index - 7}.jpg`;
-    //   const sectorLetter = String.fromCharCode(65 + Math.floor(index / 10));
-    //   const rowNum = (index % 10) + 1;
-    //   return {
-    //     file: fileName,
-    //     nodeName: `Sector ${sectorLetter} - Row ${rowNum}`,
-    //     plantIndex: index,
-    //   };
-    // });
-if (!isScouting) return;
+    // NEW: We pick 8 scattered locations across the farm (Sectors A through G)
+    // You can change these numbers (0-71) to move the red plants anywhere you want!
+    const sickIndices = [3, 14, 25, 38, 47, 52, 61, 68];
 
-const specificImages = [
-  "p.jpg",
-  "rust.jpg",
-  "rust3.jpg",
-  "sc.jpg",
-  "2.jpg",
-  "3d.jpg",
-  "complex.jpg",
-  "f2.jpg",
-];
+    let healthyCounter = 1;
 
-// NEW: We pick 8 scattered locations across the farm (Sectors A through G)
-// You can change these numbers (0-71) to move the red plants anywhere you want!
-const sickIndices = [3, 14, 25, 38, 47, 52, 61, 68];
+    const cameraScoutData = Array.from({ length: 72 }).map((_, index) => {
+      let fileName = "";
+      const sickPosition = sickIndices.indexOf(index);
 
-let healthyCounter = 1;
+      if (sickPosition !== -1) {
+        // If this index is one of our scattered sick spots, assign the specific disease image
+        fileName = `/scout_cameras/${specificImages[sickPosition]}`;
+      } else {
+        // Otherwise, pull the next healthy image in the sequence (1 to 64)
+        fileName = `/scout_cameras/healthy${healthyCounter}.jpg`;
+        healthyCounter++;
+      }
 
-const cameraScoutData = Array.from({ length: 72 }).map((_, index) => {
-  let fileName = "";
-  const sickPosition = sickIndices.indexOf(index);
+      const sectorLetter = String.fromCharCode(65 + Math.floor(index / 10));
+      const rowNum = (index % 10) + 1;
 
-  if (sickPosition !== -1) {
-    // If this index is one of our scattered sick spots, assign the specific disease image
-    fileName = `/scout_cameras/${specificImages[sickPosition]}`;
-  } else {
-    // Otherwise, pull the next healthy image in the sequence (1 to 64)
-    fileName = `/scout_cameras/healthy${healthyCounter}.jpg`;
-    healthyCounter++;
-  }
-
-  const sectorLetter = String.fromCharCode(65 + Math.floor(index / 10));
-  const rowNum = (index % 10) + 1;
-
-  return {
-    file: fileName,
-    nodeName: `Sector ${sectorLetter} - Row ${rowNum}`,
-    plantIndex: index,
-  };
-});
+      return {
+        file: fileName,
+        nodeName: `Sector ${sectorLetter} - Row ${rowNum}`,
+        plantIndex: index,
+      };
+    });
     const runScout = async () => {
       console.log("🚀 AI Scout Initiated.");
       for (let i = currentIndexRef.current; i < cameraScoutData.length; i++) {
@@ -379,21 +98,61 @@ const cameraScoutData = Array.from({ length: 72 }).map((_, index) => {
           `📷 Checking Image ${i + 1}/72: ${currentCamera.nodeName}...`,
         );
 
+        // try {
+        //   const response = await fetch(currentCamera.file);
+        //   const blob = await response.blob();
+        //   const file = new File([blob], "scout_capture.jpg", {
+        //     type: blob.type,
+        //   });
+        //   const client = await Client.connect(
+        //     "Seroy/Efficientnet_lite0_HealthyVsUnhealthy",
+        //   );
+        //   const aiResponse = await client.predict("/predict", { image: file });
+        //   const prediction = aiResponse.data[0];
+        //   const rawOutput =
+        //     typeof prediction === "string"
+        //       ? prediction
+        //       : prediction?.label || "";
+
+        //   if (rawOutput.toLowerCase().includes("unhealthy")) {
+        //     const newAlert = {
+        //       id: Date.now(),
+        //       title: `Pathogen Detected`,
+        //       time: new Date().toLocaleTimeString([], {
+        //         hour: "2-digit",
+        //         minute: "2-digit",
+        //       }),
+        //       node: currentCamera.nodeName,
+        //       plantIndex: currentCamera.plantIndex,
+        //     };
+        //     setAlerts((prev) => [newAlert, ...prev].slice(0, 5));
+        //     setSickPlants((prev) => {
+        //       if (!prev.find((p) => p.plantIndex === currentCamera.plantIndex))
+        //         return [...prev, currentCamera];
+        //       return prev;
+        //     });
+        //   }
+        // } catch (error) {
+        //   console.error(`Scout AI Error on ${currentCamera.nodeName}:`, error);
+        // }
         try {
           const response = await fetch(currentCamera.file);
           const blob = await response.blob();
           const file = new File([blob], "scout_capture.jpg", {
             type: blob.type,
           });
-          const client = await Client.connect(
-            "Seroy/Efficientnet_lite0_HealthyVsUnhealthy",
-          );
-          const aiResponse = await client.predict("/predict", { image: file });
-          const prediction = aiResponse.data[0];
-          const rawOutput =
-            typeof prediction === "string"
-              ? prediction
-              : prediction?.label || "";
+
+          // Replace Gradio call with local backend
+          const formData = new FormData();
+          formData.append("image", file);
+
+          const scoutResponse = await fetch("http://localhost:8000/scout", {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await scoutResponse.json();
+          const rawOutput = result.label || "";
 
           if (rawOutput.toLowerCase().includes("unhealthy")) {
             const newAlert = {
