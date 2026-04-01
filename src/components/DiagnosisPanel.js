@@ -472,11 +472,13 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
       if (!response.ok) throw new Error(`Backend error: ${response.status}`);
 
       const data = await response.json();
-
       const allConfidences = data.confidences || [];
-      let detected = allConfidences.filter((c) => c.confidence >= 0.3);
+
+      // Lowered threshold to 15% to ensure rich multi-label predictions show up
+      let detected = allConfidences.filter((c) => c.confidence >= 0.15);
+
       if (detected.length === 0 && allConfidences.length > 0) {
-        detected = [allConfidences[0]];
+        detected = [allConfidences[0]]; // Fallback to top 1
       }
 
       const formatName = (str) =>
@@ -582,11 +584,7 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
 
         <div className="space-y-6">
           <div
-            className={`border-4 border-dashed rounded-[2rem] p-4 text-center transition-all relative group ${
-              preview
-                ? "border-green-500/50 bg-green-50/30"
-                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-            }`}
+            className={`border-4 border-dashed rounded-[2rem] p-4 text-center transition-all relative group ${preview ? "border-green-500/50 bg-green-50/30" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
           >
             <input
               type="file"
