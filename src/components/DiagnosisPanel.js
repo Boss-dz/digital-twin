@@ -384,6 +384,7 @@
 //   Leaf,
 //   ScanSearch,
 //   FileUp,
+//   ZoomIn, // 🟢 Added ZoomIn icon
 // } from "lucide-react";
 // import { useState, useEffect } from "react";
 
@@ -409,6 +410,9 @@
 //   const [result, setResult] = useState(null);
 //   const [xaiImage, setXaiImage] = useState(null);
 
+//   // 🟢 NEW STATE: Tracks if the heatmap is currently zoomed in
+//   const [isHeatmapZoomed, setIsHeatmapZoomed] = useState(false);
+
 //   useEffect(() => {
 //     if (isOpen && plantInfo) {
 //       if (plantInfo.manualFile && plantInfo.manualFile instanceof File) {
@@ -428,6 +432,7 @@
 //       setPreview(null);
 //       setResult(null);
 //       setXaiImage(null);
+//       setIsHeatmapZoomed(false); // 🟢 Close zoom if panel closes
 //     }
 //   }, [isOpen, plantInfo]);
 
@@ -474,11 +479,10 @@
 //       const data = await response.json();
 //       const allConfidences = data.confidences || [];
 
-//       // Lowered threshold to 15% to ensure rich multi-label predictions show up
 //       let detected = allConfidences.filter((c) => c.confidence >= 0.15);
 
 //       if (detected.length === 0 && allConfidences.length > 0) {
-//         detected = [allConfidences[0]]; // Fallback to top 1
+//         detected = [allConfidences[0]];
 //       }
 
 //       const formatName = (str) =>
@@ -518,6 +522,7 @@
 
 //   return (
 //     <>
+//       {/* BACKGROUND OVERLAY FOR PANEL */}
 //       <div
 //         className={`fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[90] transition-opacity duration-500 ${
 //           isOpen
@@ -527,6 +532,7 @@
 //         onClick={onClose}
 //       />
 
+//       {/* MAIN DIAGNOSIS PANEL */}
 //       <div
 //         className={`fixed right-0 top-0 h-full w-[500px] bg-white/90 backdrop-blur-2xl border-l border-white/50 shadow-2xl p-8 transition-transform duration-500 z-[100] overflow-y-auto
 //           ${isOpen ? "translate-x-0" : "translate-x-full"}`}
@@ -584,7 +590,11 @@
 
 //         <div className="space-y-6">
 //           <div
-//             className={`border-4 border-dashed rounded-[2rem] p-4 text-center transition-all relative group ${preview ? "border-green-500/50 bg-green-50/30" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
+//             className={`border-4 border-dashed rounded-[2rem] p-4 text-center transition-all relative group ${
+//               preview
+//                 ? "border-green-500/50 bg-green-50/30"
+//                 : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+//             }`}
 //           >
 //             <input
 //               type="file"
@@ -667,22 +677,35 @@
 //             </div>
 
 //             <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-8 space-y-8 border border-white/50 shadow-lg">
+//               {/* 🟢 MODIFIED XAI IMAGE SECTION FOR ZOOM */}
 //               {xaiImage && (
 //                 <div className="bg-slate-50/80 p-6 rounded-[2rem] border border-slate-200/50 shadow-sm">
 //                   <p className="text-sm text-slate-500 font-black uppercase tracking-widest mb-4 flex items-center gap-2">
 //                     <ScanSearch className="w-4 h-4 text-blue-500" /> AI Focus
 //                     Region (Grad-CAM)
 //                   </p>
-//                   <div className="rounded-[1.5rem] overflow-hidden border border-slate-200/50 bg-white shadow-sm">
+
+//                   {/* Interactive Image Container */}
+//                   <div
+//                     onClick={() => setIsHeatmapZoomed(true)}
+//                     className="relative rounded-[1.5rem] overflow-hidden border border-slate-200/50 bg-white shadow-sm cursor-zoom-in group"
+//                   >
 //                     <img
 //                       src={xaiImage}
 //                       alt="AI Attention Heatmap"
-//                       className="w-full h-auto object-cover"
+//                       className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
 //                     />
+//                     {/* Hover Overlay with Icon */}
+//                     <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/10 transition-colors flex items-center justify-center">
+//                       <div className="bg-white/90 text-slate-800 p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg scale-90 group-hover:scale-100 duration-300">
+//                         <ZoomIn className="w-6 h-6" />
+//                       </div>
+//                     </div>
 //                   </div>
+
 //                   <p className="text-xs text-slate-400 font-bold mt-4 leading-tight text-center max-w-sm mx-auto">
-//                     Areas highlighted in warmer colors indicate patterns the
-//                     neural network used for diagnosis.
+//                     Click the image to zoom. Areas highlighted in warmer colors
+//                     indicate patterns the neural network used for diagnosis.
 //                   </p>
 //                 </div>
 //               )}
@@ -733,6 +756,39 @@
 //           </div>
 //         )}
 //       </div>
+
+//       {/* 🟢 NEW FULL-SCREEN ZOOM MODAL FOR HEATMAP */}
+//       {isHeatmapZoomed && xaiImage && (
+//         <div
+//           className="fixed inset-0 z-[200] bg-slate-900/95 backdrop-blur-lg flex items-center justify-center p-4 sm:p-8 cursor-zoom-out animate-in fade-in duration-300"
+//           onClick={() => setIsHeatmapZoomed(false)}
+//         >
+//           <div className="relative max-w-5xl w-full flex flex-col items-center">
+//             {/* Close Button */}
+//             <button
+//               onClick={(e) => {
+//                 e.stopPropagation();
+//                 setIsHeatmapZoomed(false);
+//               }}
+//               className="absolute -top-14 right-0 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+//             >
+//               <X className="w-8 h-8" />
+//             </button>
+
+//             {/* Zoomed Image */}
+//             <img
+//               src={xaiImage}
+//               alt="AI Attention Heatmap Zoomed"
+//               className="w-auto max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain border border-white/20 cursor-default"
+//               onClick={(e) => e.stopPropagation()}
+//             />
+
+//             <p className="text-white/60 font-bold mt-6 tracking-wider uppercase text-sm">
+//               Grad-CAM Heatmap Analysis
+//             </p>
+//           </div>
+//         </div>
+//       )}
 //     </>
 //   );
 // }
@@ -747,24 +803,11 @@ import {
   Leaf,
   ScanSearch,
   FileUp,
-  ZoomIn, // 🟢 Added ZoomIn icon
+  ZoomIn,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const BACKEND_URL = "http://localhost:8000";
-
-const TREATMENT_DATABASE = {
-  healthy:
-    "Plant is in optimal condition. Maintain standard watering, nutrition, and monitoring routines.",
-  scab: "Fungal infection. Apply fungicides like Captan or Mancozeb. Rake and destroy fallen infected leaves to reduce spores. Ensure proper pruning for canopy airflow.",
-  frog_eye_leaf_spot:
-    "Fungal disease (Botryosphaeria). Prune and destroy dead or cankered wood where the fungus overwinters. Apply broad-spectrum fungicides and avoid overhead watering.",
-  rust: "Cedar Apple Rust detected. Apply preventive fungicides containing myclobutanil. Inspect nearby areas for alternative hosts (like cedar or juniper trees) and remove galls.",
-  powdery_mildew:
-    "Fungal detection. Apply sulfur-based fungicides or potassium bicarbonate. Improve air circulation by pruning dense canopy areas. Avoid excessive nitrogen fertilizer.",
-  complex:
-    "Multiple concurrent pathogens detected causing complex symptoms. Implement a rigorous broad-spectrum fungicide program. Immediately isolate the plant if possible, and ensure strict sanitation of pruning tools.",
-};
 
 export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
   const [file, setFile] = useState(null);
@@ -772,8 +815,6 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [xaiImage, setXaiImage] = useState(null);
-
-  // 🟢 NEW STATE: Tracks if the heatmap is currently zoomed in
   const [isHeatmapZoomed, setIsHeatmapZoomed] = useState(false);
 
   useEffect(() => {
@@ -795,7 +836,7 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
       setPreview(null);
       setResult(null);
       setXaiImage(null);
-      setIsHeatmapZoomed(false); // 🟢 Close zoom if panel closes
+      setIsHeatmapZoomed(false);
     }
   }, [isOpen, plantInfo]);
 
@@ -843,7 +884,6 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
       const allConfidences = data.confidences || [];
 
       let detected = allConfidences.filter((c) => c.confidence >= 0.15);
-
       if (detected.length === 0 && allConfidences.length > 0) {
         detected = [allConfidences[0]];
       }
@@ -851,14 +891,12 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
       const formatName = (str) =>
         str.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
+      // THE FIX: The advice now comes directly from MongoDB via the Python API!
       const detailedResults = detected.map((d) => {
-        const key = d.label.toLowerCase();
         return {
           name: formatName(d.label),
           confidence: (d.confidence * 100).toFixed(1),
-          advice:
-            TREATMENT_DATABASE[key] ||
-            "Consult local agricultural guidelines for this anomaly.",
+          advice: d.advice || "Consult local agricultural guidelines.",
         };
       });
 
@@ -874,7 +912,7 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
           {
             name: "Connection Error",
             confidence: "0",
-            advice: `Failed to reach the backend at ${BACKEND_URL}. Make sure it is running.`,
+            advice: `Failed to reach the backend at ${BACKEND_URL}.`,
           },
         ],
       });
@@ -885,20 +923,13 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
 
   return (
     <>
-      {/* BACKGROUND OVERLAY FOR PANEL */}
       <div
-        className={`fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[90] transition-opacity duration-500 ${
-          isOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[90] transition-opacity duration-500 ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
         onClick={onClose}
       />
 
-      {/* MAIN DIAGNOSIS PANEL */}
       <div
-        className={`fixed right-0 top-0 h-full w-[500px] bg-white/90 backdrop-blur-2xl border-l border-white/50 shadow-2xl p-8 transition-transform duration-500 z-[100] overflow-y-auto
-          ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed right-0 top-0 h-full w-[500px] bg-white/90 backdrop-blur-2xl border-l border-white/50 shadow-2xl p-8 transition-transform duration-500 z-[100] overflow-y-auto ${isOpen ? "translate-x-0" : "translate-x-full"}`}
       >
         <div className="flex justify-between items-start mb-10">
           <div>
@@ -953,11 +984,7 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
 
         <div className="space-y-6">
           <div
-            className={`border-4 border-dashed rounded-[2rem] p-4 text-center transition-all relative group ${
-              preview
-                ? "border-green-500/50 bg-green-50/30"
-                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-            }`}
+            className={`border-4 border-dashed rounded-[2rem] p-4 text-center transition-all relative group ${preview ? "border-green-500/50 bg-green-50/30" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
           >
             <input
               type="file"
@@ -1040,15 +1067,12 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
             </div>
 
             <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-8 space-y-8 border border-white/50 shadow-lg">
-              {/* 🟢 MODIFIED XAI IMAGE SECTION FOR ZOOM */}
               {xaiImage && (
                 <div className="bg-slate-50/80 p-6 rounded-[2rem] border border-slate-200/50 shadow-sm">
                   <p className="text-sm text-slate-500 font-black uppercase tracking-widest mb-4 flex items-center gap-2">
                     <ScanSearch className="w-4 h-4 text-blue-500" /> AI Focus
                     Region (Grad-CAM)
                   </p>
-
-                  {/* Interactive Image Container */}
                   <div
                     onClick={() => setIsHeatmapZoomed(true)}
                     className="relative rounded-[1.5rem] overflow-hidden border border-slate-200/50 bg-white shadow-sm cursor-zoom-in group"
@@ -1058,14 +1082,12 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
                       alt="AI Attention Heatmap"
                       className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    {/* Hover Overlay with Icon */}
                     <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/10 transition-colors flex items-center justify-center">
                       <div className="bg-white/90 text-slate-800 p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg scale-90 group-hover:scale-100 duration-300">
                         <ZoomIn className="w-6 h-6" />
                       </div>
                     </div>
                   </div>
-
                   <p className="text-xs text-slate-400 font-bold mt-4 leading-tight text-center max-w-sm mx-auto">
                     Click the image to zoom. Areas highlighted in warmer colors
                     indicate patterns the neural network used for diagnosis.
@@ -1120,14 +1142,12 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
         )}
       </div>
 
-      {/* 🟢 NEW FULL-SCREEN ZOOM MODAL FOR HEATMAP */}
       {isHeatmapZoomed && xaiImage && (
         <div
           className="fixed inset-0 z-[200] bg-slate-900/95 backdrop-blur-lg flex items-center justify-center p-4 sm:p-8 cursor-zoom-out animate-in fade-in duration-300"
           onClick={() => setIsHeatmapZoomed(false)}
         >
           <div className="relative max-w-5xl w-full flex flex-col items-center">
-            {/* Close Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1137,15 +1157,12 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
             >
               <X className="w-8 h-8" />
             </button>
-
-            {/* Zoomed Image */}
             <img
               src={xaiImage}
               alt="AI Attention Heatmap Zoomed"
               className="w-auto max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain border border-white/20 cursor-default"
               onClick={(e) => e.stopPropagation()}
             />
-
             <p className="text-white/60 font-bold mt-6 tracking-wider uppercase text-sm">
               Grad-CAM Heatmap Analysis
             </p>

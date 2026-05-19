@@ -257,7 +257,12 @@ const BACKEND_URL = "http://localhost:8000";
 export default function Home() {
   const [currentView, setCurrentView] = useState("home");
   const [selectedPlantInfo, setSelectedPlantInfo] = useState(null);
-  const [weather, setWeather] = useState({ temp: "--", humid: "--" });
+const [weather, setWeather] = useState({
+  temp: "--",
+  humid: "--",
+  soil: "--",
+  light: "--",
+});
 
   const [alerts, setAlerts] = useState([]);
   const [sickPlants, setSickPlants] = useState([]);
@@ -267,22 +272,39 @@ export default function Home() {
   const scoutingRef = useRef(isScouting);
   const currentIndexRef = useRef(0);
 
-  useEffect(() => {
-    fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=36.62&longitude=3.22&current=temperature_2m,relative_humidity_2m`,
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.current) {
-          setWeather({
-            temp: Math.round(data.current.temperature_2m) + "°C",
-            humid: data.current.relative_humidity_2m + "%",
-          });
-        }
-      })
-      .catch((err) => console.error("Weather fetch failed", err));
-  }, []);
-
+  // useEffect(() => {
+  //   fetch(
+  //     `https://api.open-meteo.com/v1/forecast?latitude=36.62&longitude=3.22&current=temperature_2m,relative_humidity_2m`,
+  //   )
+  //     .then((res) => res.json())
+  //     .then((data) => {
+  //       if (data.current) {
+  //         setWeather({
+  //           temp: Math.round(data.current.temperature_2m) + "°C",
+  //           humid: data.current.relative_humidity_2m + "%",
+  //         });
+  //       }
+  //     })
+  //     .catch((err) => console.error("Weather fetch failed", err));
+  // }, []);
+useEffect(() => {
+  // Fetch from our MongoDB backend instead of directly from Open-Meteo
+  fetch(`${BACKEND_URL}/analytics/data`)
+    .then((res) => res.json())
+    .then((data) => {
+      if (data && data.length > 0) {
+        // Get the most recent data point (the last one in the array)
+        const latest = data[data.length - 1];
+        setWeather({
+          temp: Math.round(latest.temp) + "°C",
+          humid: latest.humidity + "%",
+          soil: Math.round(latest.soil) + "%",
+          light: Math.round(latest.light) + " W/m²",
+        });
+      }
+    })
+    .catch((err) => console.error("Database fetch failed", err));
+}, []);
   const toggleScouting = () => {
     const newState = !isScouting;
     setIsScouting(newState);

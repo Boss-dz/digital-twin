@@ -112,6 +112,7 @@ import {
   LayoutDashboard,
   Box,
   LineChart,
+  CheckCircle,
   Sprout,
 } from "lucide-react";
 
