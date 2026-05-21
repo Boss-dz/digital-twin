@@ -905,7 +905,7 @@ export default function AnalyticsDashboard({
               </h3>
               <p className="text-xs font-bold text-slate-500 mt-1">
                 Comparing real-time humidity against new AI pathogen detections
-                (MongoDB).
+                
               </p>
             </div>
           </div>
