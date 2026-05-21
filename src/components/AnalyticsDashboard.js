@@ -884,7 +884,7 @@ export default function AnalyticsDashboard({
             Predictive Analytics
           </h2>
           <p className="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">
-            Grad-CAM AI & MongoDB Correlation
+            AI Pathogen Detection & IoT Telemetry Correlation
           </p>
         </div>
         <div className="flex gap-2 bg-white/60 p-1.5 rounded-2xl backdrop-blur-xl border border-white shadow-sm w-fit">

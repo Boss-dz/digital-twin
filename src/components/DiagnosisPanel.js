@@ -883,7 +883,7 @@ export default function DiagnosisPanel({ isOpen, onClose, plantInfo }) {
       const data = await response.json();
       const allConfidences = data.confidences || [];
 
-      let detected = allConfidences.filter((c) => c.confidence >= 0.15);
+      let detected = allConfidences.filter((c) => c.confidence >= 0.30);
       if (detected.length === 0 && allConfidences.length > 0) {
         detected = [allConfidences[0]];
       }

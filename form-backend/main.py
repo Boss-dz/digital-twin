@@ -211,7 +211,7 @@ async def telemetry_loop():
                             {"type": "scout", "label": {"$ne": "healthy"}},
                             {
                                 "type": "deep_analysis",
-                                "top_detected": {"$ne": "healthy"},
+                                "detected_labels": {"$elemMatch": {"$ne": "healthy"}},
                             },
                         ],
                     }
@@ -376,12 +376,19 @@ async def predict(image: UploadFile = File(...)):
     except Exception:
         heatmap_id = None
 
+    # 🟢 THE FIX: Filter diseases >= 15% exactly like your frontend does!
+    detected_labels = [c["label"] for c in confidences if c["confidence"] >= 0.30]
+
+    # Fallback: if nothing is >= 15%, just take the highest score
+    if len(detected_labels) == 0:
+        detected_labels = [confidences[0]["label"]]
+
     # Log deep analysis to DB
     await db.inference_logs.insert_one(
         {
             "timestamp": datetime.now(),
             "type": "deep_analysis",
-            "top_detected": confidences[0]["label"],
+            "top_detected": detected_labels,
             "heatmap_id": heatmap_id,
         }
     )

@@ -270,7 +270,8 @@ export default function DigitalTwin({
           />
         </Suspense>
         <OrbitControls makeDefault />
-        <Environment preset="city" />
+        {/* <Environment preset="city" /> */}
+        <Environment files="potsdamer_platz_4k.exr" />
       </Canvas>
     </div>
   );
