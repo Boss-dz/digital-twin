@@ -376,7 +376,6 @@ async def predict(image: UploadFile = File(...)):
     except Exception:
         heatmap_id = None
 
-    # 🟢 THE FIX: Filter diseases >= 15% exactly like your frontend does!
     detected_labels = [c["label"] for c in confidences if c["confidence"] >= 0.30]
 
     # Fallback: if nothing is >= 15%, just take the highest score

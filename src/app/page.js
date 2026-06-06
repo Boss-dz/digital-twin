@@ -272,39 +272,83 @@ const [weather, setWeather] = useState({
   const scoutingRef = useRef(isScouting);
   const currentIndexRef = useRef(0);
 
-  // useEffect(() => {
-  //   fetch(
-  //     `https://api.open-meteo.com/v1/forecast?latitude=36.62&longitude=3.22&current=temperature_2m,relative_humidity_2m`,
-  //   )
-  //     .then((res) => res.json())
-  //     .then((data) => {
-  //       if (data.current) {
-  //         setWeather({
-  //           temp: Math.round(data.current.temperature_2m) + "°C",
-  //           humid: data.current.relative_humidity_2m + "%",
-  //         });
-  //       }
-  //     })
-  //     .catch((err) => console.error("Weather fetch failed", err));
-  // }, []);
+
+// useEffect(() => {
+//   // Fetch from our MongoDB backend instead of directly from Open-Meteo
+//   fetch(`${BACKEND_URL}/analytics/data`)
+//     .then((res) => res.json())
+//     .then((data) => {
+//       if (data && data.length > 0) {
+//         // Get the most recent data point (the last one in the array)
+//         const latest = data[data.length - 1];
+//         setWeather({
+//           temp: Math.round(latest.temp) + "°C",
+//           humid: latest.humidity + "%",
+//           soil: Math.round(latest.soil) + "%",
+//           light: Math.round(latest.light) + " W/m²",
+//         });
+//       }
+//     })
+//     .catch((err) => console.error("Database fetch failed", err));
+// }, []);
 useEffect(() => {
-  // Fetch from our MongoDB backend instead of directly from Open-Meteo
-  fetch(`${BACKEND_URL}/analytics/data`)
-    .then((res) => res.json())
-    .then((data) => {
+  const fetchAnalytics = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/analytics/data`);
+      const data = await response.json();
+
       if (data && data.length > 0) {
-        // Get the most recent data point (the last one in the array)
         const latest = data[data.length - 1];
+
         setWeather({
           temp: Math.round(latest.temp) + "°C",
           humid: latest.humidity + "%",
           soil: Math.round(latest.soil) + "%",
           light: Math.round(latest.light) + " W/m²",
         });
+
+        // 🟢 NOUVELLE FONCTIONNALITÉ : Alerte Prédictive Humidité
+        if (latest.humidity > 65) {
+          setAlerts((prevAlerts) => {
+            // On vérifie si l'alerte n'existe pas déjà pour ne pas la dupliquer
+            const hasHumidityAlert = prevAlerts.some(
+              (a) => a.id === "alert_humidity",
+            );
+
+            if (!hasHumidityAlert) {
+              const newAlert = {
+                id: "alert_humidity",
+                title: "CRITICAL HUMIDITY (>85%)",
+                node: "Global Greenhouse Environment",
+                time: new Date().toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+                // On peut ajouter une info pour dire à l'UI que c'est une alerte météo
+                isEnvironmental: true,
+              };
+              // On ajoute la nouvelle alerte au début de la liste
+              return [newAlert, ...prevAlerts];
+            }
+            return prevAlerts;
+          });
+        } else {
+          // (Optionnel) Si l'humidité redescend sous 85%, on supprime l'alerte
+          setAlerts((prevAlerts) =>
+            prevAlerts.filter((a) => a.id !== "alert_humidity"),
+          );
+        }
       }
-    })
-    .catch((err) => console.error("Database fetch failed", err));
+    } catch (error) {
+      console.error("Failed to fetch MongoDB Analytics:", error);
+    }
+  };
+
+  fetchAnalytics();
+  const interval = setInterval(fetchAnalytics, 60000); // Mise à jour chaque minute
+  return () => clearInterval(interval);
 }, []);
+
   const toggleScouting = () => {
     const newState = !isScouting;
     setIsScouting(newState);
