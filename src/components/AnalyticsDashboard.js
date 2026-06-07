@@ -621,7 +621,7 @@ export default function AnalyticsDashboard({
                 <RechartsTooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            {/* <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span
                 className={`text-3xl font-black leading-none ${sickPlants.length === 0 ? "text-green-500" : "text-slate-900"}`}
               >
@@ -632,7 +632,30 @@ export default function AnalyticsDashboard({
               >
                 {sickPlants.length === 0 ? "Healthy" : "Nodes Infected"}
               </span>
-            </div>
+            </div> */}
+            {(() => {
+              const isHealthy =
+                distributionData.length === 1 &&
+                distributionData[0].name === "Healthy";
+              const totalDetections = isHealthy
+                ? 0
+                : distributionData.reduce((sum, item) => sum + item.value, 0);
+
+              return (
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span
+                    className={`text-3xl font-black leading-none ${totalDetections === 0 ? "text-green-500" : "text-slate-900"}`}
+                  >
+                    {totalDetections === 0 ? "100%" : totalDetections}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${totalDetections === 0 ? "text-green-600" : "text-slate-400"}`}
+                  >
+                    {totalDetections === 0 ? "Healthy" : "Pathogen Signatures"}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-y-2 gap-x-4">
