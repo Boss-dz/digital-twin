@@ -1,4 +1,3 @@
-
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
@@ -12,12 +11,12 @@ const BACKEND_URL = "http://localhost:8000";
 export default function Home() {
   const [currentView, setCurrentView] = useState("home");
   const [selectedPlantInfo, setSelectedPlantInfo] = useState(null);
-const [weather, setWeather] = useState({
-  temp: "--",
-  humid: "--",
-  soil: "--",
-  light: "--",
-});
+  const [weather, setWeather] = useState({
+    temp: "--",
+    humid: "--",
+    soil: "--",
+    light: "--",
+  });
 
   const [alerts, setAlerts] = useState([]);
   const [sickPlants, setSickPlants] = useState([]);
@@ -26,83 +25,77 @@ const [weather, setWeather] = useState({
   const [isScouting, setIsScouting] = useState(false);
   const scoutingRef = useRef(isScouting);
   const currentIndexRef = useRef(0);
+  const [nodesStatus, setNodesStatus] = useState([]);
 
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/analytics/data`);
+        const data = await response.json();
 
-// useEffect(() => {
-//   // Fetch from our MongoDB backend instead of directly from Open-Meteo
-//   fetch(`${BACKEND_URL}/analytics/data`)
-//     .then((res) => res.json())
-//     .then((data) => {
-//       if (data && data.length > 0) {
-//         // Get the most recent data point (the last one in the array)
-//         const latest = data[data.length - 1];
-//         setWeather({
-//           temp: Math.round(latest.temp) + "°C",
-//           humid: latest.humidity + "%",
-//           soil: Math.round(latest.soil) + "%",
-//           light: Math.round(latest.light) + " W/m²",
-//         });
-//       }
-//     })
-//     .catch((err) => console.error("Database fetch failed", err));
-// }, []);
-useEffect(() => {
-  const fetchAnalytics = async () => {
-    try {
-      const response = await fetch(`${BACKEND_URL}/analytics/data`);
-      const data = await response.json();
+        if (data && data.length > 0) {
+          const latest = data[data.length - 1];
 
-      if (data && data.length > 0) {
-        const latest = data[data.length - 1];
-
-        setWeather({
-          temp: Math.round(latest.temp) + "°C",
-          humid: latest.humidity + "%",
-          soil: Math.round(latest.soil) + "%",
-          light: Math.round(latest.light) + " W/m²",
-        });
-
-        // 🟢 NOUVELLE FONCTIONNALITÉ : Alerte Prédictive Humidité
-        if (latest.humidity > 65) {
-          setAlerts((prevAlerts) => {
-            // On vérifie si l'alerte n'existe pas déjà pour ne pas la dupliquer
-            const hasHumidityAlert = prevAlerts.some(
-              (a) => a.id === "alert_humidity",
-            );
-
-            if (!hasHumidityAlert) {
-              const newAlert = {
-                id: "alert_humidity",
-                title: "CRITICAL HUMIDITY (>85%)",
-                node: "Global Greenhouse Environment",
-                time: new Date().toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-                // On peut ajouter une info pour dire à l'UI que c'est une alerte météo
-                isEnvironmental: true,
-              };
-              // On ajoute la nouvelle alerte au début de la liste
-              return [newAlert, ...prevAlerts];
-            }
-            return prevAlerts;
+          setWeather({
+            temp: Math.round(latest.temp) + "°C",
+            humid: latest.humidity + "%",
+            soil: Math.round(latest.soil) + "%",
+            light: Math.round(latest.light) + " W/m²",
           });
-        } else {
-          // (Optionnel) Si l'humidité redescend sous 85%, on supprime l'alerte
-          setAlerts((prevAlerts) =>
-            prevAlerts.filter((a) => a.id !== "alert_humidity"),
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch MongoDB Analytics:", error);
-    }
-  };
 
-  fetchAnalytics();
-  const interval = setInterval(fetchAnalytics, 60000); // Mise à jour chaque minute
-  return () => clearInterval(interval);
-}, []);
+          // 🟢 NOUVELLE FONCTIONNALITÉ : Alerte Prédictive Humidité
+          if (latest.humidity > 65) {
+            setAlerts((prevAlerts) => {
+              // On vérifie si l'alerte n'existe pas déjà pour ne pas la dupliquer
+              const hasHumidityAlert = prevAlerts.some(
+                (a) => a.id === "alert_humidity",
+              );
+
+              if (!hasHumidityAlert) {
+                const newAlert = {
+                  id: "alert_humidity",
+                  title: "CRITICAL HUMIDITY (>85%)",
+                  node: "Global Greenhouse Environment",
+                  time: new Date().toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }),
+                  // On peut ajouter une info pour dire à l'UI que c'est une alerte météo
+                  isEnvironmental: true,
+                };
+                // On ajoute la nouvelle alerte au début de la liste
+                return [newAlert, ...prevAlerts];
+              }
+              return prevAlerts;
+            });
+          } else {
+            // (Optionnel) Si l'humidité redescend sous 85%, on supprime l'alerte
+            setAlerts((prevAlerts) =>
+              prevAlerts.filter((a) => a.id !== "alert_humidity"),
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch MongoDB Analytics:", error);
+      }
+    };
+    const fetchNodes = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/nodes`);
+        const data = await response.json();
+        setNodesStatus(data);
+      } catch (error) {
+        console.error("Failed to fetch nodes status:", error);
+      }
+    };
+    fetchAnalytics();
+    fetchNodes();
+    const interval = setInterval(() => {
+      fetchAnalytics();
+      fetchNodes(); // 🟢 Mise à jour chaque minute
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleScouting = () => {
     const newState = !isScouting;
@@ -295,6 +288,7 @@ useEffect(() => {
               sickPlants={sickPlants}
               focusPlant={focusPlant}
               isPanelOpen={isPanelOpen}
+              nodesStatus={nodesStatus}
             />
           </div>
         )}
@@ -311,43 +305,40 @@ useEffect(() => {
   );
 }
 
+// try {
+//   const response = await fetch(currentCamera.file);
+//   const blob = await response.blob();
+//   const file = new File([blob], "scout_capture.jpg", {
+//     type: blob.type,
+//   });
+//   const client = await Client.connect(
+//     "Seroy/Efficientnet_lite0_HealthyVsUnhealthy",
+//   );
+//   const aiResponse = await client.predict("/predict", { image: file });
+//   const prediction = aiResponse.data[0];
+//   const rawOutput =
+//     typeof prediction === "string"
+//       ? prediction
+//       : prediction?.label || "";
 
-
-
-        // try {
-        //   const response = await fetch(currentCamera.file);
-        //   const blob = await response.blob();
-        //   const file = new File([blob], "scout_capture.jpg", {
-        //     type: blob.type,
-        //   });
-        //   const client = await Client.connect(
-        //     "Seroy/Efficientnet_lite0_HealthyVsUnhealthy",
-        //   );
-        //   const aiResponse = await client.predict("/predict", { image: file });
-        //   const prediction = aiResponse.data[0];
-        //   const rawOutput =
-        //     typeof prediction === "string"
-        //       ? prediction
-        //       : prediction?.label || "";
-
-        //   if (rawOutput.toLowerCase().includes("unhealthy")) {
-        //     const newAlert = {
-        //       id: Date.now(),
-        //       title: `Pathogen Detected`,
-        //       time: new Date().toLocaleTimeString([], {
-        //         hour: "2-digit",
-        //         minute: "2-digit",
-        //       }),
-        //       node: currentCamera.nodeName,
-        //       plantIndex: currentCamera.plantIndex,
-        //     };
-        //     setAlerts((prev) => [newAlert, ...prev].slice(0, 5));
-        //     setSickPlants((prev) => {
-        //       if (!prev.find((p) => p.plantIndex === currentCamera.plantIndex))
-        //         return [...prev, currentCamera];
-        //       return prev;
-        //     });
-        //   }
-        // } catch (error) {
-        //   console.error(`Scout AI Error on ${currentCamera.nodeName}:`, error);
-        // }
+//   if (rawOutput.toLowerCase().includes("unhealthy")) {
+//     const newAlert = {
+//       id: Date.now(),
+//       title: `Pathogen Detected`,
+//       time: new Date().toLocaleTimeString([], {
+//         hour: "2-digit",
+//         minute: "2-digit",
+//       }),
+//       node: currentCamera.nodeName,
+//       plantIndex: currentCamera.plantIndex,
+//     };
+//     setAlerts((prev) => [newAlert, ...prev].slice(0, 5));
+//     setSickPlants((prev) => {
+//       if (!prev.find((p) => p.plantIndex === currentCamera.plantIndex))
+//         return [...prev, currentCamera];
+//       return prev;
+//     });
+//   }
+// } catch (error) {
+//   console.error(`Scout AI Error on ${currentCamera.nodeName}:`, error);
+// }

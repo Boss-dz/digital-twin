@@ -96,6 +96,7 @@ async def telemetry_loop():
                 power_draw = 50 + np.random.uniform(-2, 5)
 
                 # 🟢 LE POINT 4 : Moteur de propagation spatiale (Simulation Digital Twin)
+                # 🟢 LE POINT 4 : Moteur de propagation spatiale (Simulation Digital Twin)
                 base_spread_factor = 0.1
                 if humidity > 85:
                     base_spread_factor = 0.6  # Très contagieux
@@ -109,21 +110,44 @@ async def telemetry_loop():
 
                 for i in range(72):
                     if i not in sick_ids:
-                        # Simulation d'une grille (voisins directs : gauche, droite, devant, derrière)
-                        neighbors = [i - 1, i + 1, i - 10, i + 10]
+                        # 1. Définition de la Zone de Voisinage (Rayon d'Infection)
+                        # -1, +1 : Voisins directs (gauche/droite)
+                        # -4, -5, -6 : Voisins de la rangée précédente (irrégulière)
+                        # +4, +5, +6 : Voisins de la rangée suivante (irrégulière)
+                        potential_neighbors = [
+                            i - 1,
+                            i + 1,
+                            i - 4,
+                            i - 5,
+                            i - 6,
+                            i + 4,
+                            i + 5,
+                            i + 6,
+                        ]
 
-                        # Filtrer pour s'assurer qu'on reste dans les limites de la serre (0 à 71)
-                        valid_neighbors = [n for n in neighbors if 0 <= n < 72]
+                        valid_neighbors = []
+                        for n in potential_neighbors:
+                            if 0 <= n < 72:
+                                # 2. SÉCURITÉ DU COULOIR (La Barrière Physique)
+                                # Table Gauche = 0 à 45 | Table Droite = 46 à 71
+                                if (i <= 45 and n > 45) or (i > 45 and n <= 45):
+                                    continue  # On bloque la propagation à travers le couloir central
+
+                                valid_neighbors.append(n)
+
+                        # 3. On compte combien de plantes malades sont dans ce rayon valide
                         infected_neighbors = sum(
                             1 for neighbor in valid_neighbors if neighbor in sick_ids
                         )
 
                         if infected_neighbors > 0:
-                            # Calcul de probabilité d'infection spatiale
-                            risk = min(1.0, infected_neighbors * base_spread_factor)
-                            trend = "at_risk" if risk > 0.4 else "stable"
+                            # Calcul de probabilité (Si beaucoup de voisins malades, on plafonne l'impact pour ne pas exploser à 500%)
+                            # On divise par 2 l'impact car la zone de recherche est plus large qu'avant
+                            risk = min(
+                                1.0, (infected_neighbors * base_spread_factor)
+                            )
+                            trend = "at_risk" if risk > 0.3 else "stable"
 
-                            # Mise à jour du noeud voisin
                             await db.nodes.update_one(
                                 {"node_id": i},
                                 {
@@ -134,11 +158,53 @@ async def telemetry_loop():
                                 },
                             )
                         else:
-                            # Remise à zéro si aucun voisin malade
                             await db.nodes.update_one(
                                 {"node_id": i},
                                 {"$set": {"spread_risk": 0.0, "trend": "stable"}},
                             )
+                # base_spread_factor = 0.1
+                # if humidity > 85:
+                #     base_spread_factor = 0.6  # Très contagieux
+                # elif humidity > 65:
+                #     base_spread_factor = 0.3
+
+                # # On récupère les ID des plantes actuellement malades (score < 100)
+                # sick_nodes_cursor = db.nodes.find({"health_score": {"$lt": 100}})
+                # sick_nodes = await sick_nodes_cursor.to_list(length=72)
+                # sick_ids = [n["node_id"] for n in sick_nodes]
+
+                # for i in range(72):
+                #     if i not in sick_ids:
+                #         # Simulation d'une grille (voisins directs : gauche, droite, devant, derrière)
+                #         neighbors = [i - 1, i + 1, i - 10, i + 10]
+
+                #         # Filtrer pour s'assurer qu'on reste dans les limites de la serre (0 à 71)
+                #         valid_neighbors = [n for n in neighbors if 0 <= n < 72]
+                #         infected_neighbors = sum(
+                #             1 for neighbor in valid_neighbors if neighbor in sick_ids
+                #         )
+
+                #         if infected_neighbors > 0:
+                #             # Calcul de probabilité d'infection spatiale
+                #             risk = min(1.0, infected_neighbors * base_spread_factor)
+                #             trend = "at_risk" if risk > 0.4 else "stable"
+
+                #             # Mise à jour du noeud voisin
+                #             await db.nodes.update_one(
+                #                 {"node_id": i},
+                #                 {
+                #                     "$set": {
+                #                         "spread_risk": round(risk, 2),
+                #                         "trend": trend,
+                #                     }
+                #                 },
+                #             )
+                #         else:
+                #             # Remise à zéro si aucun voisin malade
+                #             await db.nodes.update_one(
+                #                 {"node_id": i},
+                #                 {"$set": {"spread_risk": 0.0, "trend": "stable"}},
+                #             )
 
                 # 3. Correlate with AI (How many infections detected in the last minute?)
                 one_min_ago = datetime.now() - timedelta(seconds=60)
@@ -515,3 +581,18 @@ async def get_disease_distribution():
         color_index += 1
 
     return JSONResponse(chart_data)
+
+
+@app.get("/api/nodes")
+async def get_all_nodes():
+    # Récupère l'état des 72 plantes depuis MongoDB
+    cursor = db.nodes.find({}, {"_id": 0})
+    nodes = await cursor.to_list(length=72)
+
+    # 🟢 LA CORRECTION : Transformer les objets "datetime" en texte (String)
+    for node in nodes:
+        for history in node.get("disease_history", []):
+            if "timestamp" in history and isinstance(history["timestamp"], datetime):
+                history["timestamp"] = history["timestamp"].isoformat()
+
+    return JSONResponse(nodes)
